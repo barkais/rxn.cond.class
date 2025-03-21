@@ -926,7 +926,7 @@ validation_table <- function(validation_df,
       data = data.frame(
         x = rep(2.5, n_rows),
         y = n_rows:1 - 0.5,  # Reverse order for y
-        label = paste(plot_df$Predicted, "|", plot_df[, 3]),
+        label = paste(plot_df$Predicted, "|", plot_df[, 4]),
         correct = plot_df$Correct,
         stringsAsFactors = FALSE
       ),
