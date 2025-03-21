@@ -831,13 +831,6 @@ validation_table <- function(validation_df,
   # Make a copy of the input data
   df <- validation_df
 
-  # Add row names as a column if they exist
-  if (!is.null(rownames(df)) && all(rownames(df) != as.character(1:nrow(df)))) {
-    df[, 4] <- rownames(df)
-  } else if (!"Compound" %in% colnames(df)) {
-    df[, 4] <- paste0("Compound ", 1:nrow(df))
-  }
-
   # Check for correct prediction
   df$Correct <- df[, 2] == df[, 3]
 
@@ -846,10 +839,10 @@ validation_table <- function(validation_df,
 
   # Create a new data frame for the plot
   plot_df <- data.frame(
-    Compound = df[, 1],
-    Probability = df[, 2],
-    Predicted = df[, 3],
-    Experimental = df[, 4],
+    Compound = row.names(df),
+    Probability = df[, 1],
+    Predicted = df[, 2],
+    Experimental = df[, 3],
     Correct = df$Correct,
     stringsAsFactors = FALSE
   )
@@ -903,7 +896,7 @@ validation_table <- function(validation_df,
       data = data.frame(
         x = rep(0.5, n_rows),
         y = n_rows:1 - 0.5,  # Reverse order for y to match the table image
-        label = plot_df[, 4],
+        label = plot_df[, 1],
         stringsAsFactors = FALSE
       ),
       mapping = ggplot2::aes(
