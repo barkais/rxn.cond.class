@@ -75,47 +75,256 @@ library('rxn.con.class')
 
 ## Example Usage
 
+### Model Search
+
+This section demonstrates how to clean data, perform similarity-based sampling, rank models, and split data into training and testing sets.
+
 ```r
-library(rxn.cond.class)
+# Load data
+data <- rxn.cond.class::example_training_data
 
-# Clean correlated features
-data_cleaned <- clean_correlated_features(my_data, 
-                                         corr_threshold = 0.85, 
-                                         method = "mutual_information")
+# Clean and organize data
+row.names(data) <- data[,2]
+data$class <- as.factor(data$class)
+data <- data[,-c(1:2)] # Remove name and tag
 
-# Find the best model formulas
-top_models <- sub_model_log(data_cleaned, max = 5)
-best_formula <- top_models$formula[1]
+# Perform similarity-based sampling
+one <- simi.sampler(data, 1) # Class 1 with itself
+two <- simi.sampler(data, 2) # Class 2 with itself
+three <- simi.sampler(data, 3) # Class 3 with itself
+one_three <- simi.sampler(data, 1, 3) # Class 1 with Class 3
+two_three <- simi.sampler(data, 2, 3) # Class 2 with Class 3
 
-# Train a model
-model <- nnet::multinom(best_formula, data = data_cleaned, maxit = 2000)
+# Combine similarities
+similarties <- c(union(one, one_three), union(two, two_three), three)
 
-# Evaluate the model and create visualizations
-model_results <- mod.info(model, data_cleaned)
-print(paste("Accuracy:", model_results$accuracy, "%"))
-print(paste("McFadden's R²:", model_results$McFadden_R2))
+# Rank ordinal models
+models.ordinal <- sub_model_log(data = data[similarties, ],
+                                min = 2,
+                                max = 2, 
+                                ordinal = TRUE)
 
-# Create a confusion matrix visualization
-confusion_plot <- ct_plot(model_results$class.table, 
-                         "Model Evaluation Results", 
-                         "Training Dataset")
-print(confusion_plot$plot)
+# Rank non-ordinal models
+models.non.ordinal <- sub_model_log(data = data[similarties, ],
+                                    min = 2,
+                                    max = 2, 
+                                    ordinal = FALSE)
 
-# Generate a probability heatmap
-prob_map <- prob.heatmap(model, data_cleaned, 
-                         "Prediction Probabilities", 
-                         "Model: Logistic Regression")
+# Define training and test sets
+Train.set <- data[similarties, ]
+Test.set <- data[-similarties, ]
 
-# Create similarity-based stratified sampling for cross-validation
-class1_samples <- simi.sampler(data_cleaned, 1, sample.size = 20)
-class2_samples <- simi.sampler(data_cleaned, 2, sample.size = 20)
-training_indices <- c(class1_samples, class2_samples)
-training_set <- data_cleaned[training_indices, ]
-testing_set <- data_cleaned[-training_indices, ]
+# Load and organize external validation data
+External.set <- rxn.cond.class::example_validation_data
+RN <- External.set$V1
+External.set <- External.set[,-1]
+External.set$class <- as.factor(External.set$class)
+row.names(External.set) <- RN
 
-# K-fold cross-validation
-cv_results <- k.fold.log.cv(best_formula, data_cleaned, ordinal = FALSE, folds = 5)
-print(paste("Cross-validation accuracy:", cv_results[[1]], "%"))
+# Load and organize prediction of new substrates data
+Prediction.set <- rxn.cond.class::example_prediction_data
+RN <- Prediction.set$V1
+Prediction.set <- Prediction.set[,-1]
+row.names(Prediction.set) <- RN
+```
+
+### Ordinal Model Example
+
+#### Model Ranking
+
+```r
+# Present the ranked list of ordinal models
+knitr::kable(models.ordinal)
+```
+
+#### Training Set
+
+```r
+# Use the first ranked ordinal model
+test.form <- models.ordinal[1, 1]
+
+# Define starting coefficients
+num.of.vars <- stringi::stri_count(test.form, fixed = '+')
+start <- c(rep(0, num.of.vars + 2), 1)
+
+# Train model
+test <- fit_polr(formula = test.form, data = Train.set)
+
+# Cross-validation (smallest-group's-fold)
+k.fold.log.iter(formula = test.form, 
+                data = Train.set, 
+                ordinal = TRUE, 
+                stratify = TRUE, 
+                iterations = 20, 
+                verbose = TRUE)
+
+# Leave-one-out cross-validation
+k.fold.log.iter(formula = test.form, 
+                data = Train.set, 
+                ordinal = TRUE, 
+                folds = nrow(Train.set), 
+                stratify = FALSE, 
+                iterations = 1, 
+                verbose = TRUE)
+```
+
+#### Model Information and Visualization (Training Set)
+
+```r
+# Display model information and confusion matrix plot
+model.info <- mod.info(test, Train.set, TRUE, TRUE)
+
+# Classification table plot
+confusion_matrix <- ct_plot(model.info$class.table, 
+                            plot.title = 'Training Set', 
+                            conformation = '1. 1st Place')
+
+confusion_matrix$plot
+
+# Prediction probability heatmap
+prob.heatmap(test, Train.set, 
+             plot.title = 'Training Set', 
+             conformation = '1. 1st Place')
+```
+
+#### Test Set
+
+```r
+# Evaluate the model on the test set
+model.info <- mod.info(test, Test.set, FALSE, FALSE)
+
+# Classification table plot
+confusion_matrix <- ct_plot(model.info$class.table, 
+                            plot.title = 'Test Set', 
+                            conformation = '1. 1st Place')
+
+confusion_matrix$plot
+
+# Prediction probability heatmap
+prob.heatmap(test, Test.set, 
+             plot.title = 'Test Set', 
+             conformation = '1. 1st Place')
+```
+
+#### External Validation
+
+```r
+# Evaluate the model on the external validation set
+model.info <- mod.info(test, External.set, FALSE)
+
+# Classification table plot
+confusion_matrix <- ct_plot(model.info$class.table, 
+                            plot.title = 'External Validation', 
+                            conformation = '1. 1st Place')
+
+confusion_matrix$plot
+
+# Prediction probability heatmap
+prob.heatmap(test, External.set, 
+             plot.title = 'External Validation', 
+             conformation = '1. 1st Place')
+```
+
+#### Prediction of New Substartes
+
+```r
+knitr::kable(cbind(predict(test, Prediction.set, 'probs') * 100,
+      predicted_class = predict(test, Prediction.set, 'class')))
+```
+### Non-ordinal Model Example
+
+#### Model Ranking
+
+```r
+# Present the ranked list of non-ordinal models
+knitr::kable(models.non.ordinal)
+```
+
+#### Training Set
+
+```r
+# Use the first ranked non-ordinal model
+test.form <- models.non.ordinal[1, 1]
+
+# Train the non-ordinal multinomial regression model
+test <- nnet::multinom(test.form,
+                       data = Train.set,
+                       maxit = 2000, 
+                       trace = FALSE)
+
+# Cross-validation (smallest-group's-fold)
+k.fold.log.iter(formula = test.form, 
+                data = Train.set, 
+                ordinal = FALSE, 
+                stratify = TRUE, 
+                iterations = 20, 
+                verbose = TRUE)
+
+# Leave-one-out cross-validation
+k.fold.log.iter(formula = test.form, 
+                data = Train.set, 
+                ordinal = FALSE, 
+                folds = nrow(Train.set), 
+                stratify = FALSE, 
+                iterations = 1, 
+                verbose = TRUE)
+```
+
+#### Model Information and Visualization (Training Set)
+
+```r
+# Display model information and confusion matrix plot
+model.info <- mod.info(test, Train.set, TRUE, TRUE)
+
+# Classification table plot
+confusion_matrix <- ct_plot(model.info$class.table, 
+                            plot.title = 'Training Set', 
+                            conformation = '1. 1st Place')
+
+confusion_matrix$plot
+
+# Prediction probability heatmap
+prob.heatmap(test, Train.set, 
+             plot.title = 'Training Set', 
+             conformation = '1. 1st Place')
+```
+
+#### Test Set
+
+```r
+# Evaluate the model on the test set
+model.info <- mod.info(test, Test.set, FALSE, FALSE)
+
+# Classification table plot
+confusion_matrix <- ct_plot(model.info$class.table, 
+                            plot.title = 'Test Set', 
+                            conformation = '1. 1st Place')
+
+confusion_matrix$plot
+
+# Prediction probability heatmap
+prob.heatmap(test, Test.set, 
+             plot.title = 'Test Set', 
+             conformation = '1. 1st Place')
+```
+
+#### External Validation
+
+```r
+# Evaluate the model on the external validation set
+model.info <- mod.info(test, External.set, FALSE)
+
+# Classification table plot
+confusion_matrix <- ct_plot(model.info$class.table, 
+                            plot.title = 'External Validation', 
+                            conformation = '1. 1st Place')
+
+confusion_matrix$plot
+
+# Prediction probability heatmap
+prob.heatmap(test, External.set, 
+             plot.title = 'External Validation', 
+             conformation = '1. 1st Place')
 ```
 
 ## Advanced Functionality
@@ -133,15 +342,6 @@ The package includes specialized visualization tools:
 - `ct_plot()`: Creates heatmaps with correct/incorrect classifications, class sizes, and precision metrics
 - `prob.heatmap()`: Shows probability distributions for each prediction with color coding for correct/incorrect classifications
 - `patchwork_prob_heatmap()`: Handles large datasets with paginated visualizations
-
-## Citation
-
-If you use this package in your research, please cite:
-
-```
-Barkai, S. (2025). rxn.cond.class: Classify Chemical Reaction Conditions.
-R package version 0.1.0. https://github.com/barkais/rxn.cond.class
-```
 
 ## License
 
