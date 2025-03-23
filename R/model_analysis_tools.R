@@ -976,7 +976,6 @@ validation_table <- function(validation_df,
 #' @param title.of.analysis String containing the title for analysis plots
 #' @param one_ratio Numeric ratio of class 1 samples to include
 #' @param two_ratio Numeric ratio of class 2 samples to include
-#' @param return_results Logical; if TRUE, returns a list with plots and results (default: FALSE)
 #'
 #' @return When return_results is TRUE, a list containing:
 #'   \item{train_plots}{A list with the plots for the training set}
