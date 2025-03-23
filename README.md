@@ -1,6 +1,6 @@
 # rxn.cond.class
 
-An R package for classification modeling, probability analysis, and data visualization with a focus on chemical reaction condition classification.
+An R package for classification modeling, probability analysis, and data visualization with a focus on chemical reaction condition classification, or for any other application of logistic regressions. 
 
 ## Overview
 
