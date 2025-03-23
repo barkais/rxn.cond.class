@@ -22,8 +22,6 @@ retrain_best_model(
 \item{one_ratio}{Numeric ratio of class 1 samples to include}
 
 \item{two_ratio}{Numeric ratio of class 2 samples to include}
-
-\item{return_results}{Logical; if TRUE, returns a list with plots and results (default: FALSE)}
 }
 \value{
 When return_results is TRUE, a list containing:
