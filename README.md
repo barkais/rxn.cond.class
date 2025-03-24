@@ -343,6 +343,62 @@ The package includes specialized visualization tools:
 - `prob.heatmap()`: Shows probability distributions for each prediction with color coding for correct/incorrect classifications
 - `patchwork_prob_heatmap()`: Handles large datasets with paginated visualizations
 
+```r
+# Display model information and confusion matrix plot
+model.info <- mod.info(test, Train.set, TRUE, TRUE)
+
+# Classification table plot
+confusion_matrix_train <- ct_plot(model.info$class.table, 
+                            plot.title = 'Training Set', 
+                            conformation = '1. 1st Place')
+
+# Prediction probability heatmap
+hm_train <- patchwork_prob_heatmap(test, Train.set, 
+                       plot.title = 'Training Set', 
+                       conformation = '1. 1st Place')
+
+
+# Evaluate the model on the test set
+model.info <- mod.info(test, Test.set, FALSE, FALSE)
+
+# Classification table plot
+confusion_matrix_test <- ct_plot(model.info$class.table, 
+                            plot.title = 'Test Set', 
+                            conformation = '1. 1st Place')
+
+
+# Prediction probability heatmap
+hm_test <- patchwork_prob_heatmap(test, Test.set, 
+                       plot.title = 'Test Set', 
+                       conformation = '1. 1st Place')
+
+
+# Evaluate the model on the external validation set
+model.info <- mod.info(test, External.set, FALSE)
+
+# Classification table plot
+confusion_matrix_external <- ct_plot(model.info$class.table, 
+                            plot.title = 'External Validation', 
+                            conformation = '1. 1st Place')
+
+
+# Prediction probability heatmap
+hm_external <- prob.heatmap(test, External.set, 
+             plot.title = 'External Validation', 
+             conformation = '1. 1st Place')
+
+# Generate a combined confusion matrices plot
+combine_plots_with_legend(list(confusion_matrix_train$plot,
+                               confusion_matrix_test$plot, 
+                               confusion_matrix_external$plot),
+                          title = 'Confusion matrices',
+                          subtitle = 'Example Case')
+# Generate probability heatmaps  
+hm_train
+hm_test
+hm_external
+```
+
 ## License
 
 This package is licensed under the MIT License.
