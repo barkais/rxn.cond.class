@@ -1082,14 +1082,14 @@ retrain_best_model <- function(top_models_file, which_model = 1, title.of.analys
   # Display the combined plots
   combined_ct_plot <- combine_plots_with_legend(
     list(p1, p3), 2,
-    title = title.of.analysis,
+    title = paste(title.of.analysis, '- Confusion Matrices', collapse = ' '),
     subtitle = top_models$dataset[which_model]
   )
 
   suppressWarnings(
     combined_hm_plot <- combine_plots_with_legend(
       list(p2, p4), 2,
-      title = title.of.analysis,
+      title = paste(title.of.analysis, '- Probability Heatmaps', collapse = ' '),
       subtitle = top_models$dataset[which_model]
     )
   )
