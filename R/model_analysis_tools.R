@@ -472,6 +472,7 @@ prob.heatmap <- function(model, data, plot.title, conformation) {
 #' @param plot.title String containing the title of the plot
 #' @param conformation String containing any additional information to display as caption
 #' @param max_rows_per_plot Integer specifying the maximum number of rows to display per plot (default: 15)
+#' @param show_legend Logical, whether to display the color legend (default: TRUE)
 #'
 #' @return A ggplot2 object containing the combined probability heatmap
 #'
@@ -484,7 +485,8 @@ prob.heatmap <- function(model, data, plot.title, conformation) {
 #'
 #' @export
 patchwork_prob_heatmap <- function(model, data, plot.title, conformation,
-                                   max_rows_per_plot = 15) {  # Maximum rows per page
+                                   max_rows_per_plot = 15,  # Maximum rows per page
+                                   show_legend = FALSE) {    # Add parameter to control legend visibility
   # Check if patchwork is installed
   if (!requireNamespace("patchwork", quietly = TRUE)) {
     stop("Package 'patchwork' is needed for this function. Please install it with install.packages('patchwork')")
@@ -602,6 +604,15 @@ patchwork_prob_heatmap <- function(model, data, plot.title, conformation,
       col_vec[i] <- coloring[color_idx]
     }
 
+    # Set up the colorbar guide based on whether we want to show the legend
+    colorbar_guide <- if(include_legend && show_legend) {
+      ggplot2::guide_colorbar(title = "Probability (%)",
+                              frame.colour = "black",
+                              ticks.colour = "black")
+    } else {
+      "none"  # Hide guide completely if legend is not needed
+    }
+
     # Generate the probability heatmap
     p <- ggplot2::ggplot(mapping = ggplot2::aes(x = variable,
                                                 y = ordered(Name, levels = rev(unique_names)))) +
@@ -619,10 +630,8 @@ patchwork_prob_heatmap <- function(model, data, plot.title, conformation,
       # Color scale for cells
       ggplot2::scale_fill_gradient(low = "#FFFFFF",
                                    high = "dodgerblue2",
-                                   guide = ggplot2::guide_colorbar(title = "Probability (%)",
-                                                                   frame.colour = "black",
-                                                                   ticks.colour = "black")) +
-      # Theme customization - without legend unless it's the last plot
+                                   guide = colorbar_guide) +
+      # Theme customization
       ggplot2::theme(
         axis.text.x = ggplot2::element_text(size = text_size, face = 'bold'),
         axis.text.y = ggplot2::element_text(size = text_size, face = 'bold',
@@ -635,7 +644,7 @@ patchwork_prob_heatmap <- function(model, data, plot.title, conformation,
         panel.border = ggplot2::element_blank(),
         panel.background = ggplot2::element_blank(),
         axis.ticks = ggplot2::element_blank(),
-        legend.position = if(include_legend) "bottom" else "none",
+        legend.position = if(include_legend && show_legend) "bottom" else "none",
         plot.margin = ggplot2::unit(c(0.1, 0.1, 0.1, 0.1), "cm")
       ) +
       # Position x-axis labels at top
@@ -655,7 +664,7 @@ patchwork_prob_heatmap <- function(model, data, plot.title, conformation,
     return(p)
   }
 
-  # Create individual plots without legends
+  # Create individual plots - only include legend on the last plot if show_legend is TRUE
   for (i in 1:num_plots) {
     # Calculate row range for this page with balanced distribution
     start_idx <- (i-1) * rows_per_plot + 1
@@ -671,7 +680,7 @@ patchwork_prob_heatmap <- function(model, data, plot.title, conformation,
     # Get row colors for this page
     page_row_colors <- verif$color[match(page_data$Name[page_data$variable == page_data$variable[1]], row.names(verif))]
 
-    # Create the plot - only include legend for the last plot
+    # Create the plot - only include legend for the last plot if show_legend is TRUE
     include_legend <- (i == num_plots)
     plot_list[[i]] <- create_plot(page_data, page_row_colors, include_legend)
   }
@@ -693,9 +702,14 @@ patchwork_prob_heatmap <- function(model, data, plot.title, conformation,
         plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5),
         plot.subtitle = ggplot2::element_text(size = 12, hjust = 0.5)
       )
-    ) +
-    patchwork::plot_layout(guides = "collect") & # Collect legends
-    ggplot2::theme(legend.position = "bottom")   # Position legend at bottom
+    )
+
+  # Add layout settings - only collect guides if we're showing the legend
+  if (show_legend) {
+    combined_plot <- combined_plot +
+      patchwork::plot_layout(guides = "collect") &
+      ggplot2::theme(legend.position = "bottom")
+  }
 
   return(combined_plot)
 }
@@ -1043,7 +1057,8 @@ retrain_best_model <- function(top_models_file, which_model = 1, title.of.analys
   p2 <- patchwork_prob_heatmap(test,
                                Train.set,
                                plot.title = '',
-                               conformation = '')
+                               conformation = '',
+                               show_legend = F)
 
   # Compute test accuracy
   test_results <- mod.info(test, Test.set, F, TRUE)
@@ -1061,7 +1076,8 @@ retrain_best_model <- function(top_models_file, which_model = 1, title.of.analys
   p4 <- patchwork_prob_heatmap(test,
                                Test.set,
                                plot.title = '',
-                               conformation = '')
+                               conformation = '',
+                               show_legend = F)
 
   # Display the combined plots
   combined_plot <- combine_plots_with_legend(
