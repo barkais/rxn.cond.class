@@ -9,7 +9,8 @@ patchwork_prob_heatmap(
   data,
   plot.title,
   conformation,
-  max_rows_per_plot = 15
+  max_rows_per_plot = 15,
+  show_legend = TRUE
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ patchwork_prob_heatmap(
 \item{conformation}{String containing any additional information to display as caption}
 
 \item{max_rows_per_plot}{Integer specifying the maximum number of rows to display per plot (default: 15)}
+
+\item{show_legend}{Logical, whether to display the color legend (default: TRUE)}
 }
 \value{
 A ggplot2 object containing the combined probability heatmap
