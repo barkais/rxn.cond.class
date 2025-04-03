@@ -472,7 +472,7 @@ prob.heatmap <- function(model, data, plot.title, conformation) {
 #' @param plot.title String containing the title of the plot
 #' @param conformation String containing any additional information to display as caption
 #' @param max_rows_per_plot Integer specifying the maximum number of rows to display per plot (default: 15)
-#' @param show_legend Logical, whether to display the color legend (default: TRUE)
+#' @param show_legend Logical, whether to display the color legend (default: FALSE)
 #'
 #' @return A ggplot2 object containing the combined probability heatmap
 #'
@@ -1080,12 +1080,19 @@ retrain_best_model <- function(top_models_file, which_model = 1, title.of.analys
                                show_legend = F)
 
   # Display the combined plots
-  combined_plot <- combine_plots_with_legend(
+  combined_ct_plot <- combine_plots_with_legend(
     list(p1, p3), 2,
     title = title.of.analysis,
     subtitle = top_models$dataset[which_model]
   )
 
+  suppressWarnings(
+    combined_hm_plot <- combine_plots_with_legend(
+      list(p2, p4), 2,
+      title = title.of.analysis,
+      subtitle = top_models$dataset[which_model]
+    )
+  )
   # Create validation results
   validation_result <- data.frame(
     'Inhibition Probability' = round(predict(test, valid.set, 'probs'), 2) * 100,
@@ -1099,9 +1106,8 @@ retrain_best_model <- function(top_models_file, which_model = 1, title.of.analys
 
   # Only return the results if requested
   return(list(
-      combined_plot = combined_plot,
-      heatmap.train = p2,
-      heatmap.test = p4,
+      combined_ct_plot = combined_ct_plot,
+      combined_hm_plot = combined_hm_plot,
       validation_plot = valid_plot,
       validation_result = validation_result,
       fitted_model = test
